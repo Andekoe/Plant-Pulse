@@ -6,6 +6,8 @@ import { fetchRainLast24h } from './weather/weatherService';
 import { loadPlantRecords, savePlantRecords, PlantRecord } from './store/plantStore';
 import { requestNotificationPermission } from './notifications/pushService';
 
+const DEV_MODE = localStorage.getItem('dev-mode') === 'true';
+
 interface PlantStatus {
   id: string;
   name: string;
@@ -75,15 +77,32 @@ function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>Balcony Plant Watering</h1>
-        <p className="subtitle">Simple reminders for palm, lavender, olive, oregano, and rosemary.</p>
+        <h1>
+          <span className="header-icon">🌿</span>
+          Plant Pulse
+        </h1>
+        <p className="subtitle">Keep your balcony plants thriving</p>
+        {DEV_MODE && (
+          <button
+            className="dev-reset-btn"
+            type="button"
+            onClick={() => {
+              savePlantRecords([]);
+              setRecords([]);
+              alert('Watering records reset!');
+            }}
+            title="Dev: Reset all watering records"
+          >
+            ⟲ Reset
+          </button>
+        )}
       </header>
 
       <section className="summary-panel">
         <div>
-          <strong>{needsWaterCount}</strong> plant{needsWaterCount === 1 ? '' : 's'} need water today
+          <strong>{needsWaterCount}</strong> plant{needsWaterCount === 1 ? '' : 's'} need{needsWaterCount === 1 ? 's' : ''} water today 🌱
         </div>
-        <div>Last 24h rain: {rainMm === null ? 'Loading...' : `${rainMm.toFixed(1)} mm`}</div>
+        <div className="summary-panel__rain">☔ {rainMm === null ? 'Loading...' : `${rainMm.toFixed(1)} mm rain (24h)`}</div>
         <button
           className="refresh-weather-btn"
           type="button"
@@ -105,7 +124,7 @@ function App() {
       <Dashboard plants={plantStatus} onMarkWatered={handleMarkWatered} />
 
       <footer className="footer-note">
-        Tap a card to mark a plant as watered. The app saves last-watered times locally.
+        Tap a plant card to mark it as watered. Your plants will thank you! 💚
       </footer>
     </div>
   );

@@ -1,11 +1,11 @@
 {
-  "name": "Balcony Plant Watering",
+  "name": "Plant Pulse - Plant Watering Reminders",
   "short_name": "Plant Pulse",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#0a0a0a",
-  "theme_color": "#1a1a1a",
-  "description": "Smart balcony plant watering reminders.",
+  "background_color": "#0f0f0f",
+  "theme_color": "#4ade80",
+  "description": "Smart plant watering reminders with weather integration.",
   "icons": [
     {
       "src": "/icons/icon-192.svg",

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'balcony-plant-cache-v1';
+const CACHE_NAME = 'plant-pulse-cache-v1';
 const ASSETS_TO_CACHE = ['/', '/index.html', '/styles.css', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
