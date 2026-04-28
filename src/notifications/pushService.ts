@@ -1,4 +1,4 @@
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY ?? '';
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY ?? import.meta.env.VITE_PUSH_PUBLIC_KEY ?? '';
 
 export async function requestNotificationPermission(): Promise<void> {
   if (!('Notification' in window)) {

@@ -95,8 +95,12 @@ button {
 }
 
 .header-icon {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 2.2rem;
+  color: #ffffff;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.35);
   animation: subtle-float 3s ease-in-out infinite;
 }
 
