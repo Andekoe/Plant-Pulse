@@ -4,9 +4,9 @@ import { plantProfiles, PlantProfile } from './plants/plantDatabase';
 import { getNextWateringDate, getPlantStatus, shouldWaterToday } from './plants/wateringScheduler';
 import { fetchRainLast24h } from './weather/weatherService';
 import { loadPlantRecords, savePlantRecords, PlantRecord } from './store/plantStore';
-import { requestNotificationPermission } from './notifications/pushService';
+import { requestNotificationPermission, subscribePush, sendLocalNotification } from './notifications/pushService';
 
-const DEV_MODE = localStorage.getItem('dev-mode') === 'true';
+const DEV_MODE = typeof window !== 'undefined' && localStorage.getItem('dev-mode') === 'true';
 
 interface PlantStatus {
   id: string;
@@ -24,6 +24,8 @@ function App() {
   const [rainMm, setRainMm] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+  const [pushEnabled, setPushEnabled] = useState(false);
 
   useEffect(() => {
     const savedRecords = loadPlantRecords();
@@ -32,15 +34,51 @@ function App() {
     });
     setRecords(initialRecords);
 
-    requestNotificationPermission().catch(() => {
-      // Notification permission is optional in this version.
-    });
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission);
+    }
+
+    requestNotificationPermission()
+      .then(() => {
+        if ('Notification' in window) {
+          setNotificationPermission(Notification.permission);
+        }
+      })
+      .catch(() => {
+        // Notification permission is optional in this version.
+      });
 
     fetchRainLast24h()
       .then(setRainMm)
       .catch(() => setError('Unable to load weather data.'))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleEnableNotifications = async () => {
+    try {
+      await requestNotificationPermission();
+      if ('Notification' in window) {
+        setNotificationPermission(Notification.permission);
+      }
+      if (Notification.permission === 'granted') {
+        const subscription = await subscribePush();
+        setPushEnabled(Boolean(subscription));
+        if (!subscription) {
+          setError('Push subscription unavailable. Set VITE_VAPID_PUBLIC_KEY to enable real push reminders.');
+        }
+      }
+    } catch {
+      setError('Unable to enable notifications.');
+    }
+  };
+
+  const handleTestNotification = async () => {
+    try {
+      await sendLocalNotification('This is a Plant Pulse reminder test.');
+    } catch {
+      setError('Unable to show a test notification.');
+    }
+  };
 
   const plantStatus = useMemo(
     () =>
@@ -65,9 +103,14 @@ function App() {
   );
 
   const handleMarkWatered = (plantId: string) => {
-    const updated = records.map((record) =>
-      record.id === plantId ? { ...record, lastWatered: new Date().toISOString() } : record
-    );
+    const now = new Date().toISOString();
+    const existingRecord = records.find((record) => record.id === plantId);
+    const updated = existingRecord
+      ? records.map((record) =>
+          record.id === plantId ? { ...record, lastWatered: now } : record
+        )
+      : [...records, { id: plantId, lastWatered: now }];
+
     savePlantRecords(updated);
     setRecords(updated);
   };
@@ -116,6 +159,21 @@ function App() {
         >
           ↻
         </button>
+      </section>
+
+      <section className="notification-panel">
+        {notificationPermission !== 'granted' ? (
+          <button className="notification-action-btn" type="button" onClick={handleEnableNotifications}>
+            Enable notifications
+          </button>
+        ) : (
+          <div className="notification-status">Notifications enabled ✅</div>
+        )}
+        {notificationPermission === 'granted' && (
+          <button className="notification-action-btn" type="button" onClick={handleTestNotification}>
+            Test notification
+          </button>
+        )}
       </section>
 
       {error ? <div className="error-banner">{error}</div> : null}
