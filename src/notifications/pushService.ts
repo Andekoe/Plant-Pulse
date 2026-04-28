@@ -18,6 +18,7 @@ export async function subscribePush(): Promise<PushSubscription | null> {
   const registration = await navigator.serviceWorker.ready;
   const existing = await registration.pushManager.getSubscription();
   if (existing) {
+    localStorage.setItem('plant-pulse-subscription', JSON.stringify(existing));
     return existing;
   }
 
@@ -33,6 +34,30 @@ export async function subscribePush(): Promise<PushSubscription | null> {
 
   localStorage.setItem('plant-pulse-subscription', JSON.stringify(subscription));
   return subscription;
+}
+
+export async function saveSubscription(subscription: PushSubscription): Promise<boolean> {
+  const response = await fetch('/api/subscribe', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ subscription })
+  });
+
+  return response.ok;
+}
+
+export async function sendPushMessage(subscription: PushSubscription, payload: { title: string; body: string }): Promise<boolean> {
+  const response = await fetch('/api/send', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ subscription, title: payload.title, body: payload.body })
+  });
+
+  return response.ok;
 }
 
 export async function sendLocalNotification(message: string): Promise<void> {

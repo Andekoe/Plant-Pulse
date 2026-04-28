@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import Dashboard from './dashboard/Dashboard';
 import { plantProfiles, PlantProfile } from './plants/plantDatabase';
-import { getNextWateringDate, getPlantStatus, shouldWaterToday } from './plants/wateringScheduler';
+import { getNextWateringDate, shouldWaterToday } from './plants/wateringScheduler';
 import { fetchRainLast24h } from './weather/weatherService';
 import { loadPlantRecords, savePlantRecords, PlantRecord } from './store/plantStore';
-import { requestNotificationPermission, subscribePush, sendLocalNotification } from './notifications/pushService';
+import {
+  requestNotificationPermission,
+  subscribePush,
+  saveSubscription,
+  sendPushMessage,
+  sendLocalNotification
+} from './notifications/pushService';
 
 const DEV_MODE = typeof window !== 'undefined' && localStorage.getItem('dev-mode') === 'true';
 
@@ -60,12 +66,21 @@ function App() {
       if ('Notification' in window) {
         setNotificationPermission(Notification.permission);
       }
+
       if (Notification.permission === 'granted') {
         const subscription = await subscribePush();
-        setPushEnabled(Boolean(subscription));
         if (!subscription) {
-          setError('Push subscription unavailable. Set VITE_VAPID_PUBLIC_KEY to enable real push reminders.');
+          setError('Push subscription unavailable. Check the browser or VAPID key configuration.');
+          setPushEnabled(false);
+          return;
         }
+
+        const saved = await saveSubscription(subscription);
+        if (!saved) {
+          setError('Push subscription saved locally, but backend save failed. Reminders may not be incomplete.');
+        }
+
+        setPushEnabled(saved);
       }
     } catch {
       setError('Unable to enable notifications.');
@@ -73,10 +88,37 @@ function App() {
   };
 
   const handleTestNotification = async () => {
+    if (!pushEnabled) {
+      try {
+        await sendLocalNotification('This is a Plant Pulse reminder test.');
+      } catch {
+        setError('Unable to show a local test notification.');
+      }
+      return;
+    }
+
     try {
-      await sendLocalNotification('This is a Plant Pulse reminder test.');
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        throw new Error('Missing push subscription');
+      }
+
+      const success = await sendPushMessage(subscription, {
+        title: 'Plant Pulse',
+        body: 'This is a Plant Pulse reminder test.'
+      });
+
+      if (!success) {
+        throw new Error('Push send failed');
+      }
     } catch {
-      setError('Unable to show a test notification.');
+      setError('Unable to send a push test notification. Falling back to local notification.');
+      try {
+        await sendLocalNotification('This is a Plant Pulse reminder test.');
+      } catch {
+        setError('Unable to show a fallback local test notification.');
+      }
     }
   };
 
