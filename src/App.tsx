@@ -157,6 +157,34 @@ function App() {
     setRecords(updated);
   };
 
+  // Periodic check for plants needing water and send local notifications
+  useEffect(() => {
+    if (notificationPermission !== 'granted' || loading) return;
+
+    const checkAndNotify = () => {
+      const now = new Date();
+      const today = now.toDateString();
+      const lastNotified = localStorage.getItem('last-plant-notification');
+      
+      if (lastNotified === today) return; // Already notified today
+
+      const needsWaterCount = plantStatus.filter(plant => plant.needsWater).length;
+      if (needsWaterCount > 0) {
+        const plantNames = plantStatus.filter(plant => plant.needsWater).map(plant => plant.name).join(', ');
+        sendLocalNotification(`${needsWaterCount} plant${needsWaterCount > 1 ? 's' : ''} need${needsWaterCount > 1 ? '' : 's'} water today: ${plantNames}`);
+        localStorage.setItem('last-plant-notification', today);
+      }
+    };
+
+    // Check immediately
+    checkAndNotify();
+
+    // Check every 30 minutes
+    const interval = setInterval(checkAndNotify, 30 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [notificationPermission, loading, plantStatus]);
+
   const needsWaterCount = plantStatus.filter((plant) => plant.needsWater).length;
 
   return (
